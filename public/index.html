@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Seat Map</title>
+  <style>
+    
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .seat {
+      display: inline-block; width: 70px; height: 45px; margin: 4px;
+      text-align: center; line-height: 45px; border: 1px solid #333;
+      cursor: pointer; font-size: 13px;
+    }
+    .available { background: #d4f7d4; }  /* green */
+    .held      { background: #fff2cc; }  /* yellow */
+    .confirmed { background: #f8d0d0; cursor: not-allowed; }  /* red */
+    #message { margin-top: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Seat Map</h1>
+  <p>Enter your email, then click an available (green) seat to hold it.</p>
+
+  <label>Email:</label>
+  <input type="email" id="email" placeholder="you@example.com" />
+
+  <p id="message"></p>
+
+  <div id="seats"></div>
+
+  <div id="waitlistArea" style="margin-top: 16px;">
+    <button onclick="joinWaitlist()">Join waitlist (only when full)</button>
+    <span id="waitlistInfo"></span>
+  </div>
+
+  <p style="margin-top:16px;">
+    <a href="/manage.html">Manage a hold</a> |
+    <a href="/log.html">Event log</a>
+  </p>
+
+  <script>
+    // Load the seats from the API and draw them.
+    function loadSeats() {
+      fetch("/seats")
+        .then(function (res) { return res.json(); })
+        .then(function (data) { drawSeats(data); });
+    }
+
+    function drawSeats(data) {
+      const container = document.getElementById("seats");
+      container.innerHTML = "";
+      data.seats.forEach(function (seat) {
+        const box = document.createElement("div");
+        box.className = "seat " + seat.status;
+        box.innerText = "#" + seat.seat + "\n" + seat.status;
+        box.onclick = function () { holdSeat(seat.seat, seat.status); };
+        container.appendChild(box);
+      });
+      document.getElementById("waitlistInfo").innerText =
+        "People on waitlist: " + data.waitlist.length;
+    }
+
+    // Hold a seat when clicked (only if available).
+    function holdSeat(seatNumber, status) {
+      if (status !== "available") {
+        setMessage("That seat is not available.");
+        return;
+      }
+      const email = document.getElementById("email").value;
+      if (!email) { setMessage("Please enter your email first."); return; }
+
+      fetch("/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, seat: seatNumber })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (result) {
+          if (result.ok) {
+            setMessage("Held seat " + result.seat + ". Your hold code is: " + result.holdCode);
+          } else {
+            setMessage("Could not hold: " + result.message);
+          }
+          loadSeats();
+        });
+    }
+
+    // Join the waitlist.
+    function joinWaitlist() {
+      const email = document.getElementById("email").value;
+      if (!email) { setMessage("Please enter your email first."); return; }
+
+      fetch("/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (result) {
+          if (result.ok) {
+            setMessage("You joined the waitlist. Position: " + result.position);
+          } else {
+            setMessage("Could not join waitlist: " + result.message);
+          }
+          loadSeats();
+        });
+    }
+
+    function setMessage(text) {
+      document.getElementById("message").innerText = text;
+    }
+
+    // Load once at the start, then poll every 2 seconds so expiries show.
+    loadSeats();
+    setInterval(loadSeats, 2000);
+  </script>
+</body>
+</html>

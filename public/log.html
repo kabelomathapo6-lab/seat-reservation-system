@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Event Log</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; margin-top: 12px; }
+    td, th { border: 1px solid #333; padding: 5px 10px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Event Log</h1>
+  <p>Every state change is recorded here, newest at the bottom.</p>
+
+  <label>Filter by seat number (leave blank for all):</label>
+  <input type="text" id="seatFilter" placeholder="e.g. 1" />
+  <button onclick="loadLog()">Apply filter</button>
+
+  <table id="logTable">
+    <thead>
+      <tr><th>Time</th><th>Type</th><th>Seat</th><th>Email</th><th>Details</th></tr>
+    </thead>
+    <tbody id="logBody"></tbody>
+  </table>
+
+  <p style="margin-top:16px;">
+    <a href="/index.html">Seat map</a> |
+    <a href="/manage.html">Manage a hold</a>
+  </p>
+
+  <script>
+    function loadLog() {
+      const filter = document.getElementById("seatFilter").value;
+
+      fetch("/log")
+        .then(function (res) { return res.json(); })
+        .then(function (log) {
+          const body = document.getElementById("logBody");
+          body.innerHTML = "";
+          log.forEach(function (entry) {
+            // If a filter is set, skip entries that are not that seat.
+            if (filter !== "" && String(entry.seat) !== filter) {
+              return;
+            }
+            const row = document.createElement("tr");
+            const time = new Date(entry.time).toLocaleTimeString();
+            row.innerHTML =
+              "<td>" + time + "</td>" +
+              "<td>" + entry.type + "</td>" +
+              "<td>" + (entry.seat === null ? "-" : entry.seat) + "</td>" +
+              "<td>" + entry.email + "</td>" +
+              "<td>" + entry.details + "</td>";
+            body.appendChild(row);
+          });
+        });
+    }
+
+    loadLog();
+    setInterval(loadLog, 2000); // refresh so new events show
+  </script>
+</body>
+</html>

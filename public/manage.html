@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manage Hold</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input { margin: 4px 0; }
+    #message { margin-top: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Manage Hold</h1>
+  <p>Enter your email and hold code, then choose an action.</p>
+
+  <label>Email:</label><br />
+  <input type="email" id="email" placeholder="you@example.com" /><br />
+  <label>Hold code:</label><br />
+  <input type="text" id="holdCode" placeholder="6-character code" /><br /><br />
+
+  <button onclick="doAction('/extend')">Extend</button>
+  <button onclick="doAction('/confirm')">Confirm</button>
+  <button onclick="doAction('/release')">Release</button>
+
+  <p id="message"></p>
+
+  <p style="margin-top:16px;">
+    <a href="/index.html">Seat map</a> |
+    <a href="/log.html">Event log</a>
+  </p>
+
+  <script>
+    // Send the chosen action to the API and show the outcome.
+    function doAction(url) {
+      const email = document.getElementById("email").value;
+      const holdCode = document.getElementById("holdCode").value;
+
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, holdCode: holdCode })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (result) {
+          if (result.ok) {
+            document.getElementById("message").innerText = "Success. Seat " + result.seat + ".";
+          } else {
+            // Show which rule was violated, as the brief asks.
+            document.getElementById("message").innerText =
+              "Rejected (" + result.rule + "): " + result.message;
+          }
+        });
+    }
+  </script>
+</body>
+</html>
